@@ -4,7 +4,7 @@
 #
 # VERSION=`python helpers/findcheckpoint.py results/b-${b}-g-${g}.out`
 # printf "Test results from batch size %4d on %d GPU devices (v-%s)\n" $b $g $VERSION
-VERSION="000002"
+VERSION="000003"
 
 FLAGS=
 
