@@ -4,7 +4,7 @@
 #
 # VERSION=`python helpers/findcheckpoint.py results/b-${b}-g-${g}.out`
 # printf "Test results from batch size %4d on %d GPU devices (v-%s)\n" $b $g $VERSION
-VERSION="000001"
+VERSION="000002"
 
 FLAGS=
 
@@ -14,7 +14,7 @@ FLAGS=
 # Run benchmark in training mode
 EVALUATION="True"
 
-MODEL="resnet50"
+MODEL="resnet50_v1.5"
 
 NAME="imagenet"
 # Synthetic data
@@ -83,7 +83,7 @@ DISPLAY_INTERVAL=10
 
 CHECKPOINT_EVERY_N_EPOCHS="True"
 CHECKPOINT_INTERVAL=1
-CHECKPOINT_DIRECTORY="checkpoints/v-${VERSION}"
+CHECKPOINT_DIRECTORY="/fast/checkpoints/v-${VERSION}"
 
 FLAGS="${FLAGS} --checkpoint_every_n_epochs=${CHECKPOINT_EVERY_N_EPOCHS}"
 FLAGS="${FLAGS} --checkpoint_interval=${CHECKPOINT_INTERVAL}"
