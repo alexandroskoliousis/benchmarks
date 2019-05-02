@@ -3,17 +3,22 @@
 # Modified on 16 April to run version 1.5 with NCCL support
 
 VERSION="1.5"
-DATADIR="/fast/imagenet/train"
-CHECKPOINTDIR="/fast/checkpoints/"
+DATADIR="/fast/tensorflow/imagenet/train"
+CHECKPOINTDIR="/fast/tensorflow/checkpoints/"
+
+B=16
+# B=32
 # B=64
-B=128
+# B=128
+
 # B=256 causes out-of-memory error
 # --xla_compile=True increases throughput but we don't support it.
+# --model=resnet50_v1.5
 
 python tf_cnn_benchmarks.py \
 	--data_format=NCHW \
 	--batch_size=${B} \
-	--model=resnet50_v1.5 \
+	--model=resnet50 \
 	--optimizer=momentum \
 	--variable_update=replicated \
 	--all_reduce_spec=nccl \
@@ -30,7 +35,7 @@ python tf_cnn_benchmarks.py \
 	--compute_lr_on_cpu=True \
 	--single_l2_loss_op=True \
 	--loss_type_to_report=base_loss \
-	>resnet-50-r${VERSION}.out 2>&1
+	# >resnet-50-r${VERSION}.out 2>&1
 
 echo "Bye."
 exit 0

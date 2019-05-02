@@ -2553,7 +2553,7 @@ class BenchmarkCNN(object):
     global_start_time = time.time()
     while not done_fn():
       if local_step == 0:
-        log_fn('Done warm up')
+        log_fn('Done warm up at %d ms' % int(round(time.time() * 1000)))
         if graph_info.execution_barrier:
           log_fn('Waiting for other replicas to finish warm up')
           sess.run([graph_info.execution_barrier])
@@ -2660,6 +2660,7 @@ class BenchmarkCNN(object):
     # We skip printing images/sec if --eval_during_training_* is specified,
     # because we are both processing training and evaluation images, so a
     # singular "images/sec" value is meaningless.
+    log_fn('Finished at %d' % int(round(time.time() * 1000)))
     if self.mode != constants.BenchmarkMode.TRAIN_AND_EVAL:
       log_fn('-' * 64)
       # TODO(laigd): rename 'images' to maybe 'inputs'.
@@ -2670,7 +2671,7 @@ class BenchmarkCNN(object):
 
     # Alexandros Koliousis (26 March 2019)
     #
-    # Checkpoint one lsat time?
+    # Checkpoint one last time?
     #
     if not (supervisor.saver and self.filepath):
         raise ValueError("Undefined saver")
