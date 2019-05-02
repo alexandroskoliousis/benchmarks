@@ -4,8 +4,8 @@
 #
 PROFILE=0
 
-NVPROFEXEC=/usr/local/cuda/bin/nvprof
-NVPROFOPTS="-o profiler.nvvp"
+NVPROFEXEC=/usr/local/cuda-10.1/bin/nvprof
+NVPROFOPTS="-o profiler.nvvp --profile-from-start off --concurrent-kernels off"
 if [ $PROFILE -gt 1 ]; then
 	#
 	# Detailed profiling looks into SM occupancy and activity.
@@ -17,7 +17,7 @@ fi
 # Batch size (per GPU)
 B=32
 # Numbe of GPU devices
-G=4
+G=1
 # Learning rate schedule (step-wise)
 S="0.1;80;0.01;120;0.001" # LR0;E1;LR1;...;En;LRn
 # Version of ResNet
@@ -45,7 +45,7 @@ DATADIR="datasets/cifar-10/batches"
 # TF record data
 # DATADIR="datasets/cifar-10"
 
-EPOCHS=1 # 160
+EPOCHS=5 # 160
 
 MOMENTUM=0.9
 DECAY="0.0001"
@@ -61,7 +61,7 @@ ALLREDUCE="nccl" # empty, nccl, or xring
 DISPLAY_INTERVAL=100
 
 # Also checkpoint every N epochs
-# CHECKPOINT_EVERY_N_EPOCHS=True
+CHECKPOINT_EVERY_N_EPOCHS=False
 
 # We want 1 checkpoint per epoch...
 CHECKPOINT_INTERVAL=1
@@ -72,14 +72,14 @@ FLAGS=${FLAGS}" --data_name=${DATASET}"
 
 [ -n "${DATADIR}" ] && FLAGS=${FLAGS}" --data_dir=${DATADIR}"
 
-#if [ $PROFILE -gt 1 ]; then
-#	# When profiling SM activity,
-#	# run only 1 batch.
-#	FLAGS=${FLAGS}" --num_batches=1"
-#else
-#	FLAGS=${FLAGS}" --num_epochs=${EPOCHS}"
-#fi
-FLAGS=${FLAGS}" --num_batches=1"
+if [ $PROFILE -gt 1 ]; then
+	# When profiling SM activity,
+	# run only 1 batch.
+	FLAGS=${FLAGS}" --num_batches=1"
+else
+	FLAGS=${FLAGS}" --num_epochs=${EPOCHS}"
+fi
+# FLAGS=${FLAGS}" --num_batches=10"
 
 # Run benchmark in training mode
 FLAGS=${FLAGS}" --eval=False --forward_only=False"
@@ -132,14 +132,32 @@ FLAGS=${FLAGS}" --resize_method=bilinear"
 # Fix display interval to every 100 tasks...
 FLAGS=${FLAGS}" --display_every=${DISPLAY_INTERVAL}"
 
-FLAGS=${FLAGS}" --checkpoint_every_n_epochs=True"
+FLAGS=${FLAGS}" --checkpoint_every_n_epochs=False"
 FLAGS=${FLAGS}" --checkpoint_interval=${CHECKPOINT_INTERVAL}"
 FLAGS=${FLAGS}" --checkpoint_directory=${CHECKPOINT_DIRECTORY}"
 
 FLAGS=${FLAGS}" --data_format=NCHW"
 FLAGS=${FLAGS}" --batchnorm_persistent=True"
 FLAGS=${FLAGS}" --use_tf_layers=True"
-FLAGS=${FLAGS}" --winograd_nonfused=True"
+# FLAGS=${FLAGS}" --winograd_nonfused=True"
+FLAGS=${FLAGS}" --winograd_nonfused=False"
+
+# Enable GPU utilisation measurements
+MEASUREMENTS=1
+MEASUREMENTSCRIPT="$CROSSBOW_HOME/tools/measurements/gpu-measurements.sh"
+MEASUREMENTSCRIPTPID=
+
+if [ $MEASUREMENTS -gt 0 ]; then
+    if [ ! -x $MEASUREMENTSCRIPT ]; then
+        echo "error: invalid script: $MEASUREMENTSCRIPT"
+        exit 1
+    fi
+    # Let's generate an appropriate filename
+    # to store measurements
+    $MEASUREMENTSCRIPT "resnet-32-b-${B}-g-${G}.csv" &
+    # Get background process id
+    MEASUREMENTSCRIPTPID=$!
+fi
 
 # Run
 printf "Train ResNet32 v.%s with batch size %4d on %d GPU devices\n" $V $B $G
@@ -162,5 +180,16 @@ if [ $PROFILE -gt 0 ]; then
 	echo "$NVPROFEXEC $NVPROFOPTS python tf_cnn_benchmarks.py $FLAGS"
 	$NVPROFEXEC $NVPROFOPTS python tf_cnn_benchmarks.py $FLAGS # > results/resnet-32-b-$B-g-$G.out
 else
-	python tf_cnn_benchmarks.py $FLAGS # > results/resnet-32-b-$B-g-$G.out
+	python tf_cnn_benchmarks.py $FLAGS > resnet-32-b-${B}-g-${G}.out 2>&1
 fi
+
+if [ $MEASUREMENTS -gt 0 ]; then
+    # Stop GPU measurements script
+    echo "Stop GPU measurements"
+    if [ -n $MEASUREMENTSCRIPTPID ]; then
+        kill -15 $MEASUREMENTSCRIPTPID >/dev/null 2>&1
+        killall "nvidia-smi" >/dev/null 2>&1
+    fi
+fi
+
+echo "Done"
